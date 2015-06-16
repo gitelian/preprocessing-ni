@@ -47,7 +47,7 @@ disp('making running file')
 for k = 1:length(MCdata);
     run_data(:,k) = MCdata{1,k}(:,end);
 end
-save([mcdata_dir filesep mcdata_file(1:end-4) '.dat'],'run_data','time','aoFinal','stimsequence','ao_latency','ao_interval',...
+save([mcdata_dir filesep mcdata_file(1:end-4) '.run'],'run_data','time','aoFinal','stimsequence','ao_latency','ao_interval',...
     'ao_duration','ao_amplitude','ao_quantity','optosquare','optoramp','-v7.3');
 
 %% Save First 16 Channels to e1.phy file
