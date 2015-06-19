@@ -1,114 +1,85 @@
 
+%MAKE_REF_FILE Computes common average reference (CAR) for the specified file.
+%   Computes CAR and saves it in a cell array that is the same size as the
+%   MCdata cell structure of the specified .phy file.
+%   See Ludwig et al. 2009 for details.
 
-%SortSpikes
-%   SortSpikes takes four arguments: data_directory, data_filename, Fs, and
-%   channels. Data_directory is a string that contains the path to the
-%   directory containing the MCdata file to be analyzed by
-%   UltraMegaSort. Data_filename is a string that contains the MCdata file
-%   name. Fs is the sampling rate of the recorded session and channels is a
-%   vector that contains the channel numbers to be grouped and sorted.
+function make_ref_file(data_filename, varargin)
 
-% G.Telian
-% Adesnik Lab
-% UC Berkeley
-% 20140123
+data_dir = '~/Documents/AdesnikLab/Data';
+[~, base_name, ~] = fileparts(data_filename);
 
-function sort_spikes(data_filename, channels, varargin)
-
+% Set sampling rate
 if nargin == 1
-    error('Not enough input arguments')
-
+    Fs = 30000;
 elseif nargin == 2
-    data_dir = '~/Documents/AdesnikLab/Data';
-    Fs = 30000;
-
-elseif nargin == 3
-    data_dir = varargin{1};
-    Fs = 30000;
-
-    if exist(data_dir,'dir') == 0
-        error('Directory does not exist')
-    end
-elseif nargin == 4
-
-    data_dir = varargin{1};
-    Fs = varargin{2};
-
-    if exist(data_dir,'dir') == 0
-        error('Directory does not exist')
-    end
-end
-
-if exist([data_dir filesep data_filename],'file') == 0
-    disp([data_dir filesep data_filename])
-    error('File does not exist')
+    Fs = varargin{1};
 end
 
 if ischar(Fs)
     Fs = str2double(Fs);
 end
 
-if ischar(channels)
-    channels = str2double(channels);
-end
-
-if length(channels) < 2
-    error('channels must contain at least 2 values')
-elseif length(channels) > 4
-    error('channels must not contain more than 4 values')
-end
-
+% Verify directory and MCdata (.phy) file exists
 if ~exist(data_dir,'dir')
     error('directory does not exist')
 elseif ~exist([data_dir filesep data_filename],'file')
     error('MCdata file does not exist')
 end
 
+% Load MCdata file
 disp('loading MCdata file')
 load([data_dir filesep data_filename],'MCdata','-mat')
 
+% Construct parameters for filter
 disp('filtering data')
-%construct parameters for filter
 Wp = [ 800  8000] * 2 / Fs;
 Ws = [ 600 10000] * 2 / Fs;
 [N,Wn] = buttord( Wp, Ws, 3, 20);
 [B,A] = butter(N,Wn);
 
-MCdata2 = [];
+ntrials = length(MCdata);
+nsamples = size(MCdata{1}, 1);
+nchannels = size(MCdata{1}, 2);
+mcmat = zeros(ntrials*nsamples, nchannels);
 
-%filter raw MCdata into MCdata2 variable
-for j = 1:length(MCdata)
-   MCdata2{j}(:,1) = filtfilt( B, A, MCdata{j}(:,channels(1)));
-   MCdata2{j}(:,2) = filtfilt( B, A, MCdata{j}(:,channels(2)));
-   if length(channels) > 2
-       MCdata2{j}(:,3) = filtfilt( B, A, MCdata{j}(:,channels(3)));
-   end
-   if length(channels) > 3
-       MCdata2{j}(:,4) = filtfilt( B, A, MCdata{j}(:,channels(4)));
-   end
+%filter raw MCdata into mcmat variable
+for k = 1:ntrials
+    start_ind = (k-1)*nsamples + 1;
+    stop_ind  = k*nsamples;
+    mcmat(start_ind:stop_ind, :) = MCdata{k};
 end
 
-disp('preparing UltraMegaSort2000!')
-% run algorithm
-spikes = ss_default_params(Fs);
-spikes = ss_detect(MCdata2,spikes);
-spikes = ss_align(spikes);
-spikes = ss_kmeans(spikes);
-spikes = ss_energy(spikes);
-spikes = ss_aggregate(spikes);
+clear MCdata
 
-% main tool
-splitmerge_tool(spikes)
+for j = 1:nchannels
+    mcmat(:, j) = filtfilt( B, A, mcmat(:, j));
+end
 
+% rms of all channels
+mcrms = rms(mcmat);
 
+% CAR-n (n channel average)
+mcmean = mean(mcmat, 2);
 
+% rms of CAR-n (across all channels)
+rms_allchan = rms(mcmean);
 
+% find good channel indices
+good_channels = find(mcrms <= 2*rms_allchan & mcrms >= 0.3*rms_allchan);
 
+% compute CAR-n with only good channels
+mcmean = mean(mcmat(:, good_channels), 2);
 
+clear mcmat
 
+% make CAR_n cell
+CAR_n = cell(1, ntrials);
+for k = 1:ntrials
+    start_ind = (k-1)*nsamples + 1;
+    stop_ind  = k*nsamples;
+    CAR_n{1, k} = mcmean(start_ind:stop_ind);
+end
 
-
-
-
-
+save([data_dir filesep base_name '.ref'], 'CAR_n', '-v7.3')
 

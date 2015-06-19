@@ -13,34 +13,72 @@
 % UC Berkeley
 % 20140123
 
-function sort_spikes(data_filename, varargin)
+function sort_spikes(data_filename, channels, varargin)
 
-data_dir = '~/Documents/AdesnikLab/Data';
-
-% Set sampling rate
 if nargin == 1
-    Fs = 30000;
+    error('Not enough input arguments')
+
 elseif nargin == 2
-    Fs = varargin{1};
+    data_dir = '~/Documents/AdesnikLab/Data';
+    Fs = 30000;
+
+elseif nargin == 3
+    data_dir = varargin{1};
+    Fs = 30000;
+
+    if exist(data_dir,'dir') == 0
+        error('Directory does not exist')
+    end
+elseif nargin == 4
+
+    data_dir = varargin{1};
+    Fs = varargin{2};
+
+    if exist(data_dir,'dir') == 0
+        error('Directory does not exist')
+    end
+end
+
+if exist([data_dir filesep data_filename],'file') == 0
+    disp([data_dir filesep data_filename])
+    error('File does not exist')
 end
 
 if ischar(Fs)
     Fs = str2double(Fs);
 end
 
-% Verify directory and MCdata (.phy) file exists
+if ischar(channels)
+    channels = str2double(channels);
+end
+
+if length(channels) < 2
+    error('channels must contain at least 2 values')
+elseif length(channels) > 4
+    error('channels must not contain more than 4 values')
+end
+
 if ~exist(data_dir,'dir')
     error('directory does not exist')
 elseif ~exist([data_dir filesep data_filename],'file')
     error('MCdata file does not exist')
 end
 
-% Load MCdata file
 disp('loading MCdata file')
 load([data_dir filesep data_filename],'MCdata','-mat')
 
-% Construct parameters for filter
+[~, base_name, ~] = fileparts(data_filename);
+
+if exist([data_dir filesep base_name '.ref'], 'file')
+    disp('loading CAR_n')
+    load([data_dir filesep base_name '.ref'], 'CAR_n', '-mat')
+    CAR_bool = 1;
+else
+    CAR_bool = 0;
+end
+
 disp('filtering data')
+%construct parameters for filter
 Wp = [ 800  8000] * 2 / Fs;
 Ws = [ 600 10000] * 2 / Fs;
 [N,Wn] = buttord( Wp, Ws, 3, 20);
@@ -58,7 +96,23 @@ for j = 1:length(MCdata)
    if length(channels) > 3
        MCdata2{j}(:,4) = filtfilt( B, A, MCdata{j}(:,channels(4)));
    end
+
+   if CAR_bool
+       MCdata2{j} = bsxfun(@minus, MCdata2{j}, CAR_n{j});
+   end
 end
+
+disp('preparing UltraMegaSort2000!')
+% run algorithm
+spikes = ss_default_params(Fs);
+spikes = ss_detect(MCdata2,spikes);
+spikes = ss_align(spikes);
+spikes = ss_kmeans(spikes);
+spikes = ss_energy(spikes);
+spikes = ss_aggregate(spikes);
+
+% main tool
+splitmerge_tool(spikes)
 
 
 
