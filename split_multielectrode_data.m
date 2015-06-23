@@ -10,18 +10,37 @@
 % UC Berkeley
 % 20140121
 %
-% 20150623 GT: Minor cosmetic/syntactic updates
+% 20150623 GT: Minor cosmetic/syntactic updates and added functionality to
+% update the stimsequence vector for a whisker trimming experiment.
 
 function split_multielectrode_data(mcdata_file, varargin)
 
 if nargin == 1
-    mcdata_dir = '~/Documents/AdesnikLab/Data';
+    mcdata_dir = '~/Documents/AdesnikLab/Data';%Change this for other computer!!!
+
 elseif nargin == 2
+
     mcdata_dir = varargin{1};
     if exist(mcdata_dir,'dir') == 0
         error('Directory does not exist')
     end
+
+elseif nargin == 3
+
+    mcdata_dir = varargin{1};
+    if exist(mcdata_dir,'dir') == 0
+        error('Directory does not exist')
+    end
+
+    whisker_trim_bool = varargin{2};
+    if whisker_trim_bool
+        disp(['Whisker trimming file! Updating stimsequence labels'])
+    else
+        disp(['Not a whisker trimming file. Proceeding with regular split'])
+    end
+
 end
+
 disp([mcdata_dir filesep mcdata_file])
 if exist([mcdata_dir filesep mcdata_file],'file') == 0
     error('File does not exist')
@@ -47,6 +66,12 @@ disp('making running file')
 for k = 1:length(MCdata);
     run_data(:,k) = MCdata{1,k}(:,end);
 end
+
+split_index = length(stimsequence);
+if whisker_trim_bool && mod(split_index, 2) == 0
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+end
+
 save([mcdata_dir filesep mcdata_file(1:end-4) '.dat'],'run_data','time',...
     'aoFinal','stimsequence','ao_latency','ao_interval','ao_duration',...
     'ao_amplitude','ao_quantity','optosquare','optoramp','-v7.3');
@@ -61,6 +86,12 @@ disp('clearing MCdata variables and saving electrode 1 file')
 clear MCdata
 MCdata = mcdata_temp;
 clear mcdata_temp;
+
+split_index = length(stimsequence);
+if whisker_trim_bool && mod(split_index, 2) == 0
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+end
+
 save([mcdata_dir filesep mcdata_file(1:end-4) '_e1.phy'],'MCdata','time',...
     'aoFinal','stimsequence','ao_latency','ao_interval','ao_duration',...
     'ao_amplitude','ao_quantity','optosquare','optoramp','-v7.3');
@@ -87,6 +118,12 @@ disp('clearing MCdata variables and saving electrode 2 file')
 clear MCdata
 MCdata = mcdata_temp;
 clear mcdata_e2
+
+split_index = length(stimsequence);
+if whisker_trim_bool && mod(split_index, 2) == 0
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+end
+
 save([mcdata_dir filesep mcdata_file(1:end-4) '_e2.phy'],'MCdata','time',...
     'aoFinal','stimsequence','ao_latency','ao_interval','ao_duration',...
     'ao_amplitude','ao_quantity','optosquare','optoramp','-v7.3');
