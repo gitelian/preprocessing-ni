@@ -3,6 +3,8 @@
 %    the MCdata .phy file with the exception of the actual neural data. This
 %    information will be used by the whisker tracking software for identifying
 %    running trials and the stimulus presented during those trials.
+%
+%    Syntax: create_dat_file('path/to/directory', 'data file name')
 
 function create_dat_file(mcdata_dir, mcdata_file)
 
