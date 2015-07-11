@@ -17,6 +17,7 @@ function split_multielectrode_data(mcdata_file, varargin)
 
 if nargin == 1
     mcdata_dir = '~/Documents/AdesnikLab/Data';%Change this for other computer!!!
+    whisker_trim_bool = 0;
 
 elseif nargin == 2
 
@@ -24,6 +25,8 @@ elseif nargin == 2
     if exist(mcdata_dir,'dir') == 0
         error('Directory does not exist')
     end
+
+    whisker_trim_bool = 0;
 
 elseif nargin == 3
 
@@ -67,9 +70,9 @@ for k = 1:length(MCdata);
     run_data(:,k) = MCdata{1,k}(:,end);
 end
 
-split_index = length(stimsequence);
+split_index = length(stimsequence)/2;
 if whisker_trim_bool && mod(split_index, 2) == 0
-    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)+7];
 end
 
 save([mcdata_dir filesep mcdata_file(1:end-4) '.dat'],'run_data','time',...
@@ -87,24 +90,28 @@ clear MCdata
 MCdata = mcdata_temp;
 clear mcdata_temp;
 
-split_index = length(stimsequence);
+split_index = length(stimsequence)/2;
 if whisker_trim_bool && mod(split_index, 2) == 0
-    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)+7];
 end
 
 save([mcdata_dir filesep mcdata_file(1:end-4) '_e1.phy'],'MCdata','time',...
     'aoFinal','stimsequence','ao_latency','ao_interval','ao_duration',...
     'ao_amplitude','ao_quantity','optosquare','optoramp','-v7.3');
-save([tempdir filesep 'temp.mat'],'mcdata_file','mcdata_dir','-v7.3');
+save([tempdir filesep 'temp_usr.mat'],'mcdata_file','mcdata_dir','whisker_trim_bool','-v7.3');
 
 disp('clearing memory')
 clear all
+cwd = pwd;
+cd(tempdir);
+pack
+cd(cwd)
 
 disp(' ')
 
 %% Save Last 16 Channels to e2.phy file
 disp('loading MCdata file')
-load([tempdir filesep 'temp.mat'])
+load([tempdir filesep 'temp_usr.mat'])
 load([mcdata_dir filesep mcdata_file ],'-mat')
 
 mcdata_temp = cell(size(MCdata));
@@ -117,11 +124,11 @@ end
 disp('clearing MCdata variables and saving electrode 2 file')
 clear MCdata
 MCdata = mcdata_temp;
-clear mcdata_e2
+clear mcdata_temp
 
-split_index = length(stimsequence);
+split_index = length(stimsequence)/2;
 if whisker_trim_bool && mod(split_index, 2) == 0
-    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)];
+    stimsequence = [stimsequence(1:split_index), stimsequence(split_index+1:end)+7];
 end
 
 save([mcdata_dir filesep mcdata_file(1:end-4) '_e2.phy'],'MCdata','time',...
@@ -130,7 +137,12 @@ save([mcdata_dir filesep mcdata_file(1:end-4) '_e2.phy'],'MCdata','time',...
 
 disp('clearing memory')
 clear all
+cwd = pwd;
+cd(tempdir);
+pack
+cd(cwd)
 
-delete([tempdir filesep 'temp.mat'])
+
+delete([tempdir filesep 'temp_usr.mat'])
 
 toc()
