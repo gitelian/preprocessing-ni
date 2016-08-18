@@ -19,7 +19,8 @@ if nargin == 1
     error('Not enough input arguments')
 
 elseif nargin == 2
-    data_dir = '~/Documents/AdesnikLab/Data';
+%     data_dir = '~/Documents/AdesnikLab/Data';
+    data_dir = '/media/greg/Data/Neuro';
     Fs = 30000;
 
 elseif nargin == 3
